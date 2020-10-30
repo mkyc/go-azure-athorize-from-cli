@@ -13,11 +13,11 @@ import (
 func main() {
 
 	subscriptionsClient := subscriptions.NewClient()
-	authorizer, err := auth.NewAuthorizerFromCLI()
+	rmAuthorizer, err := auth.NewAuthorizerFromCLI()
 	if err != nil {
 		log.Fatal(err)
 	}
-	subscriptionsClient.Authorizer = authorizer
+	subscriptionsClient.Authorizer = rmAuthorizer
 	subscriptionsPage, err := subscriptionsClient.List(context.TODO())
 	if err != nil {
 		log.Fatal(err)
@@ -28,7 +28,7 @@ func main() {
 		//sId = *sub.SubscriptionID
 	}
 	tenantsClient := subscriptions.NewTenantsClient()
-	tenantsClient.Authorizer = authorizer
+	tenantsClient.Authorizer = rmAuthorizer
 	tenantsPage, err := tenantsClient.List(context.TODO())
 	if err != nil {
 		log.Fatal(err)
@@ -47,21 +47,37 @@ func main() {
 		log.Fatal(err)
 	}
 
-	a, err := auth.NewAuthorizerFromCLIWithResource(env.GraphEndpoint)
+	graphAuthorizer, err := auth.NewAuthorizerFromCLIWithResource(env.GraphEndpoint)
 
 	spClient := graphrbac.NewServicePrincipalsClient(tId)
-	spClient.Authorizer = a
+	spClient.Authorizer = graphAuthorizer
 
-	spPage, err := spClient.ListComplete(context.TODO(), "")
+	spIterator, err := spClient.ListComplete(context.TODO(), "")
 	if err != nil {
 		log.Fatal(err)
 	}
-	for spPage.NotDone() {
-		sp := spPage.Value()
+	for spIterator.NotDone() {
+		sp := spIterator.Value()
 		if *sp.PublisherName != "Microsoft Services" {
-			log.Printf("Name: %s\n", *sp.DisplayName)
+			log.Printf("Service Principal: %s\n", *sp.DisplayName)
 		}
-		err := spPage.NextWithContext(context.TODO())
+		err = spIterator.NextWithContext(context.TODO())
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	appClient := graphrbac.NewApplicationsClient(tId)
+	appClient.Authorizer = graphAuthorizer
+
+	appIterator, err := appClient.ListComplete(context.TODO(), "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for appIterator.NotDone() {
+		app := appIterator.Value()
+		log.Printf("Application: %s\n", *app.DisplayName)
+		err = appIterator.NextWithContext(context.TODO())
 		if err != nil {
 			log.Fatal(err)
 		}
