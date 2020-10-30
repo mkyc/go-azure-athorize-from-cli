@@ -13,32 +13,46 @@ import (
 func main() {
 
 	subscriptionsClient := subscriptions.NewClient()
-	rmAuthorizer, err := auth.NewAuthorizerFromCLI()
+	resourceManagerAuthorizer, err := auth.NewAuthorizerFromCLI()
 	if err != nil {
 		log.Fatal(err)
 	}
-	subscriptionsClient.Authorizer = rmAuthorizer
-	subscriptionsPage, err := subscriptionsClient.List(context.TODO())
+	subscriptionsClient.Authorizer = resourceManagerAuthorizer
+	subscriptionsIterator, err := subscriptionsClient.ListComplete(context.TODO())
 	if err != nil {
 		log.Fatal(err)
 	}
-	//var sId string
-	for _, sub := range subscriptionsPage.Values() {
-		log.Printf("Subscription name: %s and ID: %s\n", *sub.DisplayName, *sub.SubscriptionID)
-		//sId = *sub.SubscriptionID
+	subscriptionsCount := 0
+	for subscriptionsIterator.NotDone() {
+		subscriptionsCount++
+		sub := subscriptionsIterator.Value()
+		log.Printf("Subscription name: %s and ID: %s\n", *sub.DisplayName, *sub.ID)
+		err = subscriptionsIterator.NextWithContext(context.TODO())
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
+
 	tenantsClient := subscriptions.NewTenantsClient()
-	tenantsClient.Authorizer = rmAuthorizer
-	tenantsPage, err := tenantsClient.List(context.TODO())
+	tenantsClient.Authorizer = resourceManagerAuthorizer
+	tenantsIterator, err := tenantsClient.ListComplete(context.TODO())
 	if err != nil {
 		log.Fatal(err)
 	}
 	var tId string
-	for _, ten := range tenantsPage.Values() {
+	tenantsCount := 0
+	for tenantsIterator.NotDone() {
+		tenantsCount++
+		ten := tenantsIterator.Value()
 		log.Printf("Some tenant id: %s and some other id: %s\n", *ten.ID, *ten.TenantID)
 		tId = *ten.TenantID
+		err = tenantsIterator.NextWithContext(context.TODO())
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
-	if len(subscriptionsPage.Values()) != 1 || len(tenantsPage.Values()) != 1 {
+
+	if subscriptionsCount != 1 || tenantsCount != 1 {
 		log.Fatal("There is more than 1 subscription or tenant")
 	}
 
